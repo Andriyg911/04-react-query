@@ -8,9 +8,10 @@ interface MovieModalProps {
   onClose: () => void;
 }
 
-const modalRoot = document.getElementById('modal-root') as HTMLElement;
-
 export default function MovieModal({ movie, onClose }: MovieModalProps) {
+  const modalRoot = document.getElementById('modal-root');
+  if (!modalRoot) return null;
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -50,23 +51,33 @@ export default function MovieModal({ movie, onClose }: MovieModalProps) {
           &times;
         </button>
 
-        {movie.backdrop_path && (
-          <img
-            src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
-            alt={movie.title}
-            className={styles.image}
-          />
-        )}
+        {typeof movie.backdrop_path === 'string' &&
+          movie.backdrop_path.trim() !== '' && (
+            <img
+              src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
+              alt={movie.title}
+              className={styles.image}
+            />
+          )}
 
         <div className={styles.content}>
-          <h2>{movie.title}</h2>
-          <p>{movie.overview}</p>
-          <p>
-            <strong>Release Date:</strong> {movie.release_date}
+          <h2 className={styles.title}>{movie.title}</h2>
+
+          <p className={styles.info}>
+            <strong>Release date:</strong>{' '}
+            {movie.release_date?.trim() || 'Unknown'}
           </p>
-          <p>
-            <strong>Rating:</strong> {movie.vote_average}/10
+
+          <p className={styles.info}>
+            <strong>Rating:</strong>{' '}
+            {typeof movie.vote_average === 'number'
+              ? `${movie.vote_average.toFixed(1)} / 10`
+              : 'N/A'}
           </p>
+
+          {movie.overview && (
+            <p className={styles.overview}>{movie.overview}</p>
+          )}
         </div>
       </div>
     </div>,
