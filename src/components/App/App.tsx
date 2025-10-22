@@ -1,53 +1,80 @@
 import { useState } from 'react';
-import { Toaster, toast } from 'react-hot-toast';
-import { fetchMovies } from '../../services/movieService';
-import type { Movie } from '../../types/movie';
+import { useQuery } from '@tanstack/react-query';
+import ReactPaginate from 'react-paginate';
 
+import { fetchMovies, MoviesResponse } from '../../services/movieService';
 import SearchBar from '../SearchBar/SearchBar';
 import MovieGrid from '../MovieGrid/MovieGrid';
 import MovieModal from '../MovieModal/MovieModal';
 import Loader from '../Loader/Loader';
 import ErrorMessage from '../ErrorMessage/ErrorMessage';
 
-const App = () => {
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [selected, setSelected] = useState<Movie | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+import type { Movie } from '../../types/movie';
+import styles from './App.module.css'; // ✅ правильний імпорт CSS-модуля
 
-  const handleSearch = async (query: string) => {
-    setMovies([]);
-    setSelected(null);
-    setError(false);
+export default function App() {
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
-    try {
-      setLoading(true);
-      const results = await fetchMovies({ query });
-      if (!results.length) {
-        toast('No movies found for your request.');
-      }
-      setMovies(results);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
+  const { data, isLoading, isError } = useQuery<MoviesResponse>({
+    queryKey: ['movies', query, page],
+    queryFn: () => fetchMovies({ query, page }),
+    placeholderData: (prev: MoviesResponse | undefined) => prev,
+    enabled: !!query,
+  });
+
+  const handleSearch = (newQuery: string) => {
+    setQuery(newQuery);
+    setPage(1);
+  };
+
+  const handlePageClick = ({ selected }: { selected: number }) => {
+    setPage(selected + 1);
   };
 
   return (
-    <>
+    <div>
       <SearchBar onSubmit={handleSearch} />
-      {loading && <Loader />}
-      {error && <ErrorMessage />}
-      {!loading && !error && movies.length > 0 && (
-        <MovieGrid movies={movies} onSelect={setSelected} />
-      )}
-      {selected && (
-        <MovieModal movie={selected} onClose={() => setSelected(null)} />
-      )}
-      <Toaster position="top-right" />
-    </>
-  );
-};
 
-export default App;
+      {isLoading && <Loader />}
+      {isError && <ErrorMessage />}
+
+      {/* Пагінація зверху */}
+      {data?.total_pages && data.total_pages > 1 && (
+        <ReactPaginate
+          pageCount={data.total_pages}
+          onPageChange={handlePageClick}
+          containerClassName={styles.pagination}
+          activeClassName={styles.active}
+          previousLabel="<"
+          nextLabel=">"
+          breakLabel="..."
+        />
+      )}
+
+      {/* Сітка фільмів */}
+      {data?.results && (
+        <MovieGrid movies={data.results} onSelect={setSelectedMovie} />
+      )}
+
+      {/* Пагінація знизу */}
+      {data?.total_pages && data.total_pages > 1 && (
+        <ReactPaginate
+          pageCount={data.total_pages}
+          onPageChange={handlePageClick}
+          containerClassName={styles.pagination}
+          activeClassName={styles.active}
+          previousLabel="<"
+          nextLabel=">"
+          breakLabel="..."
+        />
+      )}
+
+      {/* Модалка */}
+      {selectedMovie && (
+        <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />
+      )}
+    </div>
+  );
+}

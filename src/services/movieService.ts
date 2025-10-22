@@ -9,28 +9,23 @@ export interface FetchMoviesParams {
   page?: number;
 }
 
-interface MoviesResponse {
+export interface MoviesResponse {
   page: number;
   results: Movie[];
   total_pages: number;
   total_results: number;
 }
 
-export async function fetchMovies(
-  { query, page = 1 }: FetchMoviesParams
-): Promise<Movie[]> {
+export async function fetchMovies({ query, page = 1 }: FetchMoviesParams): Promise<MoviesResponse> {
+  if (!TOKEN) {
+    throw new Error('TMDB token is missing. Please set VITE_TMDB_TOKEN in .env');
+  }
+
   const config = {
-    params: {
-      query,
-      page,
-      include_adult: false,
-      language: 'en-US',
-    },
-    headers: {
-      Authorization: `Bearer ${TOKEN}`,
-    },
+    params: { query, page, include_adult: false, language: 'en-US' },
+    headers: { Authorization: `Bearer ${TOKEN}` },
   };
 
   const response = await axios.get<MoviesResponse>(API_URL, config);
-  return response.data.results;
+  return response.data;
 }
